@@ -54,11 +54,11 @@ public class MeshDetails
 public class ResourceChecker : EditorWindow {
 	
 	
-	string[] inspectToolbarStrings = {"Textures", "Materials","Meshes"};
+	string[] inspectToolbarStrings = {"Textures", "Materials", "Meshes", "Audio" };
 	
 	enum InspectType 
 	{
-		Textures,Materials,Meshes
+		Textures,Materials,Meshes, Audios
 	};
 	
 	InspectType ActiveInspectType=InspectType.Textures;
@@ -69,13 +69,17 @@ public class ResourceChecker : EditorWindow {
 	List<TextureDetails> ActiveTextures=new List<TextureDetails>();
 	List<MaterialDetails> ActiveMaterials=new List<MaterialDetails>();
 	List<MeshDetails> ActiveMeshDetails=new List<MeshDetails>();
+	List<AudioClip> ActiveAudios = new List<AudioClip>();
 	
 	Vector2 textureListScrollPos=new Vector2(0,0);
 	Vector2 materialListScrollPos=new Vector2(0,0);
 	Vector2 meshListScrollPos=new Vector2(0,0);
+	Vector2 audioListScrollPos=new Vector2(0,0);
 	
 	int TotalTextureMemory=0;
 	int TotalMeshVertices=0;
+	
+	bool sceneOnly = true;
 	
 	bool ctrlPressed=false;
 	
@@ -91,11 +95,16 @@ public class ResourceChecker : EditorWindow {
     
     void OnGUI ()
 	{
+		GUILayout.BeginHorizontal();
 		if (GUILayout.Button("Refresh")) CheckResources();
+		if (GUILayout.Button("UnloadUnusedAssets")) Resources.UnloadUnusedAssets();
+		sceneOnly = EditorGUILayout.Toggle("Scene only?", sceneOnly);
+		GUILayout.EndHorizontal();
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Meshes "+ActiveMeshDetails.Count+" - "+TotalMeshVertices+" verts");
+		GUILayout.Label("Audios "+ActiveAudios.Count);
 		GUILayout.EndHorizontal();
 		ActiveInspectType=(InspectType)GUILayout.Toolbar((int)ActiveInspectType,inspectToolbarStrings);
 		
@@ -112,8 +121,9 @@ public class ResourceChecker : EditorWindow {
 			case InspectType.Meshes:
 				ListMeshes();
 				break;	
-			
-			
+			case InspectType.Audios:
+				ListAudios();
+				break;				
 		}
 	}
 	
@@ -369,6 +379,22 @@ public class ResourceChecker : EditorWindow {
 		EditorGUILayout.EndScrollView();		
     }
 	
+	void ListAudios() {
+		audioListScrollPos = EditorGUILayout.BeginScrollView(audioListScrollPos);
+		foreach (var audio in ActiveAudios) {
+			GUILayout.BeginHorizontal();
+			GUILayout.Label(audio.name);		
+			if(GUILayout.Button("GO", GUILayout.Width(50)))
+			{
+				var l = new List<Object>();				
+				l.Add(audio);
+				SelectObjects(l, false);
+			}
+			GUILayout.EndHorizontal();
+		}
+		GUILayout.EndScrollView();
+	}
+	
 	string FormatSizeString(int memSizeKB)
 	{
 		if (memSizeKB<1024) return ""+memSizeKB+"k";
@@ -416,8 +442,11 @@ public class ResourceChecker : EditorWindow {
 		ActiveTextures.Clear();
 		ActiveMaterials.Clear();
 		ActiveMeshDetails.Clear();
+		ActiveAudios.Clear();
 		
-		Renderer[] renderers = (Renderer[]) FindObjectsOfType(typeof(Renderer));
+		Renderer[] renderers;
+		if (sceneOnly) renderers = (Renderer[]) FindObjectsOfType(typeof(Renderer));
+		else renderers = (Renderer[]) Resources.FindObjectsOfTypeAll(typeof(Renderer));
 		//Debug.Log("Total renderers "+renderers.Length);
 		foreach (Renderer renderer in renderers)
 		{
@@ -480,7 +509,11 @@ public class ResourceChecker : EditorWindow {
 		}
 		
 		
-		MeshFilter[] meshFilters = (MeshFilter[]) FindObjectsOfType(typeof(MeshFilter));
+		MeshFilter[] meshFilters;
+		if (sceneOnly) 
+			meshFilters = (MeshFilter[]) FindObjectsOfType(typeof(MeshFilter));
+		else
+			meshFilters = (MeshFilter[]) Resources.FindObjectsOfTypeAll(typeof(MeshFilter));
 		
 		foreach (MeshFilter tMeshFilter in meshFilters)
 		{
@@ -498,7 +531,11 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 		
-		SkinnedMeshRenderer[] skinnedMeshRenderers = (SkinnedMeshRenderer[]) FindObjectsOfType(typeof(SkinnedMeshRenderer));
+		SkinnedMeshRenderer[] skinnedMeshRenderers;
+		if (sceneOnly) 
+			skinnedMeshRenderers = (SkinnedMeshRenderer[]) FindObjectsOfType(typeof(SkinnedMeshRenderer));
+		else
+			skinnedMeshRenderers = (SkinnedMeshRenderer[]) Resources.FindObjectsOfTypeAll(typeof(SkinnedMeshRenderer));
 		
 		foreach (SkinnedMeshRenderer tSkinnedMeshRenderer in skinnedMeshRenderers)
 		{
@@ -516,7 +553,17 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 		
-	
+		
+		AudioClip[] audios;
+		if (sceneOnly)
+			audios = (AudioClip[]) FindObjectsOfType(typeof(AudioClip));
+		else
+			audios = (AudioClip[]) Resources.FindObjectsOfTypeAll(typeof(AudioClip));
+		
+		foreach (AudioClip clip in audios) {
+			ActiveAudios.Add(clip);
+		}
+		
 		TotalTextureMemory=0;
 		foreach (TextureDetails tTextureDetails in ActiveTextures) TotalTextureMemory+=tTextureDetails.memSizeKB;
 		
