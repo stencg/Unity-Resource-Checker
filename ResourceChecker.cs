@@ -96,7 +96,7 @@ public class Missing{
 public class ResourceChecker : EditorWindow {
 
 
-	string[] inspectToolbarStrings = {"Textures", "Materials", "Meshes", "Audio", "Missing" };
+	string[] inspectToolbarStrings = {"Textures", "Materials", "Meshes", "Audio" };
 	string[] inspectToolbarStrings2 = {"Textures", "Materials", "Meshes", "Audio", "Missing" };
 
 	enum InspectType 
@@ -174,9 +174,15 @@ public class ResourceChecker : EditorWindow {
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
 		GUILayout.Label("Meshes "+ActiveMeshDetails.Count+" - "+TotalMeshVertices+" verts");
 		GUILayout.Label("Audios "+ActiveAudios.Count);
-		GUILayout.EndHorizontal();
 		if (thingsMissing == true)
 		{
+			GUILayout.Label("Missings " + MissingObjects.Count);
+		}
+		GUILayout.EndHorizontal();
+
+		if (thingsMissing == true)
+		{
+			
 			ActiveInspectType = (InspectType)GUILayout.Toolbar((int)ActiveInspectType, inspectToolbarStrings2);
 		}
 		else
@@ -846,7 +852,7 @@ public class ResourceChecker : EditorWindow {
 				tMissing.Object = tMeshFilter.transform;
 				tMissing.type = "mesh";
 				tMissing.name = tMeshFilter.transform.name;
-				MissingObjects.Add (tMissing);
+				MissingObjects.Add(tMissing);
 				thingsMissing = true;
 			}
 
@@ -857,7 +863,7 @@ public class ResourceChecker : EditorWindow {
 				tMissing.Object = tMeshFilter.transform;
 				tMissing.type = "material";
 				tMissing.name = tMeshFilter.transform.name;
-				MissingObjects.Add (tMissing);
+				MissingObjects.Add(tMissing);
 				thingsMissing = true;
 			}
 		}
@@ -882,7 +888,7 @@ public class ResourceChecker : EditorWindow {
 				tMissing.Object = tSkinnedMeshRenderer.transform;
 				tMissing.type = "mesh";
 				tMissing.name = tSkinnedMeshRenderer.transform.name;
-				MissingObjects.Add (tMissing);
+				MissingObjects.Add(tMissing);
 				thingsMissing = true;
 			}
 			if (tSkinnedMeshRenderer.sharedMaterial == null) {
@@ -890,24 +896,28 @@ public class ResourceChecker : EditorWindow {
 				tMissing.Object = tSkinnedMeshRenderer.transform;
 				tMissing.type = "material";
 				tMissing.name = tSkinnedMeshRenderer.transform.name;
-				MissingObjects.Add (tMissing);
+				MissingObjects.Add(tMissing);
 				thingsMissing = true;
 			}
 		}
 
 		LODGroup[] lodGroups = FindObjects<LODGroup>();
-
-		// Check if any LOD groups have no renderers
-		foreach (var group in lodGroups) {
-			var lods = group.GetLODs();
-			for (int i = 0, l = lods.Length; i < l; i++) {
-				if (lods[i].renderers.Length == 0) {
-					MissingGraphic tMissing = new MissingGraphic();
-					tMissing.Object = group.transform;
-					tMissing.type = "lod";
-					tMissing.name = group.transform.name;
-					MissingObjects.Add(tMissing);
-					thingsMissing = true;
+		if (lodGroups != null) {
+			// Check if any LOD groups have no renderers
+			foreach (var group in lodGroups)
+			{
+				var lods = group.GetLODs();
+				for (int i = 0, l = lods.Length; i < l; i++)
+				{
+					if (lods[i].renderers.Length == 0)
+					{
+						Missing tMissing = new Missing();
+						tMissing.Object = group.transform;
+						tMissing.type = "lod";
+						tMissing.name = group.transform.name;
+						MissingObjects.Add(tMissing);
+						thingsMissing = true;
+					}
 				}
 			}
 		}
