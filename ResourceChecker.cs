@@ -138,6 +138,8 @@ public class ResourceChecker : EditorWindow {
 
 	bool collectedInPlayingMode;
 
+	System.Text.StringBuilder tmpStringBuilder = new System.Text.StringBuilder();
+
 	[MenuItem ("Window/Resource Checker")]
 	static void Init ()
 	{  
@@ -165,10 +167,12 @@ public class ResourceChecker : EditorWindow {
 		GUILayout.EndArea();
 		RemoveDestroyedResources();
 
-		GUILayout.Space(30);
+		GUILayout.Space(100);
 		if (thingsMissing == true) {
 			EditorGUI.HelpBox (new Rect(8,93,300,25),"Some GameObjects are missing elements.", MessageType.Error);
 		}
+		EditorGUI.HelpBox(new Rect(8, 123, 300, 25), "Crunch textures have approximate size", MessageType.Warning);
+		EditorGUI.HelpBox(new Rect(8, 153, 300, 25), "ASTC not support", MessageType.Warning);
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
@@ -274,8 +278,12 @@ public class ResourceChecker : EditorWindow {
 			return 16;
 		case TextureFormat.DXT1:	// Compressed color texture format.
 			return 4;
+		case TextureFormat.DXT1Crunched:    // Compressed color texture format.
+			return 1;
 		case TextureFormat.DXT5:	// Compressed color with alpha channel texture format.
 			return 8;
+		case TextureFormat.DXT5Crunched:
+			return 2;
 			/*
 			case TextureFormat.WiiI4:	// Wii texture format.
 			case TextureFormat.WiiI8:	// Wii texture format. Intensity 8 bit.
@@ -287,7 +295,7 @@ public class ResourceChecker : EditorWindow {
 			case TextureFormat.WiiCMPR:	//	 Compressed Wii texture format. 4 bits/texel, ~RGB8A1 (Outline alpha is not currently supported).
 				return 0;  //Not supported yet
 			*/
-		case TextureFormat.PVRTC_RGB2://	 PowerVR (iOS) 2 bits/pixel compressed color texture format.
+			case TextureFormat.PVRTC_RGB2://	 PowerVR (iOS) 2 bits/pixel compressed color texture format.
 			return 2;
 		case TextureFormat.PVRTC_RGBA2://	 PowerVR (iOS) 2 bits/pixel compressed with alpha channel texture format
 			return 2;
@@ -296,9 +304,15 @@ public class ResourceChecker : EditorWindow {
 		case TextureFormat.PVRTC_RGBA4://	 PowerVR (iOS) 4 bits/pixel compressed with alpha channel texture format
 			return 4;
 		case TextureFormat.ETC_RGB4://	 ETC (GLES2.0) 4 bits/pixel compressed RGB texture format.
-			return 4;								
+			return 4;
+		case TextureFormat.ETC_RGB4Crunched:
+			return 1;
 		case TextureFormat.ETC2_RGBA8:
 			return 8;
+		case TextureFormat.ETC2_RGB:
+			return 4;
+		case TextureFormat.ETC2_RGBA8Crunched:
+			return 2;
 		case TextureFormat.EAC_R:
 			return 4;
 		case TextureFormat.BGRA32://	 Format returned by iPhone camera
@@ -825,6 +839,7 @@ public class ResourceChecker : EditorWindow {
 				}
 			}
 		}
+
 
 		MeshFilter[] meshFilters = FindObjects<MeshFilter>();
 
