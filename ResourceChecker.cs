@@ -270,9 +270,9 @@ public class ResourceChecker : EditorWindow {
 			return 16;
 		case TextureFormat.RGB24:	// A color texture format.
 			return 24;
-		case TextureFormat.RGBA32:	//Color with an alpha channel texture format.
+		case TextureFormat.RGBA32:	// Color with an alpha channel texture format.
 			return 32;
-		case TextureFormat.ARGB32:	//Color with an alpha channel texture format.
+		case TextureFormat.ARGB32:	// Color with an alpha channel texture format.
 			return 32;
 		case TextureFormat.RGB565:	//	 A 16 bit color texture format.
 			return 16;
@@ -284,6 +284,10 @@ public class ResourceChecker : EditorWindow {
 			return 8;
 		case TextureFormat.DXT5Crunched:
 			return 2;
+		case TextureFormat.BC4:    // Compressed R channel texture format.
+			return 4;
+		case TextureFormat.BC7:    // Compressed color with alpha channel texture format.
+			return 8;
 			/*
 			case TextureFormat.WiiI4:	// Wii texture format.
 			case TextureFormat.WiiI8:	// Wii texture format. Intensity 8 bit.
@@ -295,7 +299,7 @@ public class ResourceChecker : EditorWindow {
 			case TextureFormat.WiiCMPR:	//	 Compressed Wii texture format. 4 bits/texel, ~RGB8A1 (Outline alpha is not currently supported).
 				return 0;  //Not supported yet
 			*/
-			case TextureFormat.PVRTC_RGB2://	 PowerVR (iOS) 2 bits/pixel compressed color texture format.
+		case TextureFormat.PVRTC_RGB2://	 PowerVR (iOS) 2 bits/pixel compressed color texture format.
 			return 2;
 		case TextureFormat.PVRTC_RGBA2://	 PowerVR (iOS) 2 bits/pixel compressed with alpha channel texture format
 			return 2;
@@ -420,7 +424,7 @@ public class ResourceChecker : EditorWindow {
 
 			string sizeLabel=""+tDetails.texture.width+"x"+tDetails.texture.height;
 			if (tDetails.isCubeMap) sizeLabel+="x6";
-			if (tDetails.texture.GetType () == typeof(Texture2DArray))
+			if (tDetails.texture.GetType() == typeof(Texture2DArray))
 				sizeLabel+= "[]\n" + ((Texture2DArray)tDetails.texture).depth+"depths";
 			sizeLabel+=" - "+tDetails.mipMapCount+"mip\n"+FormatSizeString(tDetails.memSizeKB)+" - "+tDetails.format;
 
@@ -441,7 +445,7 @@ public class ResourceChecker : EditorWindow {
 			{
 				SelectObjects(new List<Object>(FoundObjects),ctrlPressed);
 			}
-
+			GUILayout.Label(AssetDatabase.GetAssetPath(tDetails.texture), GUILayout.Width(300));
 			GUILayout.EndHorizontal();	
 		}
 		if (ActiveTextures.Count>0)
@@ -485,7 +489,8 @@ public class ResourceChecker : EditorWindow {
 				GUI.color = defColor;
 
 				string shaderLabel = tDetails.material.shader != null ? tDetails.material.shader.name : "no shader";
-				GUILayout.Label (shaderLabel, GUILayout.Width(200));
+				shaderLabel += "\n" + AssetDatabase.GetAssetPath(tDetails.material);
+				GUILayout.Label (shaderLabel, GUILayout.Width(400));
 
 				if(GUILayout.Button((tDetails.FoundInRenderers.Count + tDetails.FoundInGraphics.Count) +" GO",GUILayout.Width(50)))
 				{
@@ -497,7 +502,7 @@ public class ResourceChecker : EditorWindow {
 
 				var queue = tDetails.material.renderQueue;
 				EditorGUI.BeginChangeCheck();
-				queue = EditorGUILayout.DelayedIntField(queue, GUILayout.Width(35));
+				queue = EditorGUILayout.DelayedIntField(queue, GUILayout.Width(40));
 				if (EditorGUI.EndChangeCheck())
 				{
 					tDetails.material.renderQueue = queue;
@@ -505,7 +510,7 @@ public class ResourceChecker : EditorWindow {
 					GUIUtility.ExitGUI();
 					break;
 				}
-				
+				//GUILayout.Label(AssetDatabase.GetAssetPath(tDetails.material), GUILayout.Width(300));
 				GUILayout.EndHorizontal();	
 			}
 		}
@@ -559,7 +564,7 @@ public class ResourceChecker : EditorWindow {
 					SelectObjects(FoundObjects,ctrlPressed);
 				}
 				if (tDetails.FoundInSkinnedMeshRenderer.Count > 0) {
-					if (GUILayout.Button (tDetails.FoundInSkinnedMeshRenderer.Count + " skinned mesh GO", GUILayout.Width (140))) {
+					if (GUILayout.Button (tDetails.FoundInSkinnedMeshRenderer.Count + " skinned mesh GO", GUILayout.Width (120))) {
 						List<Object> FoundObjects = new List<Object> ();
 						foreach (SkinnedMeshRenderer skinnedMeshRenderer in tDetails.FoundInSkinnedMeshRenderer)
 							FoundObjects.Add (skinnedMeshRenderer.gameObject);
@@ -567,7 +572,7 @@ public class ResourceChecker : EditorWindow {
 					}
 				} else {
 					GUI.color = new Color (defColor.r, defColor.g, defColor.b, 0.5f);
-					GUILayout.Label("   0 skinned mesh");
+					GUILayout.Label(" 0 skinned mesh", GUILayout.Width(120));
 					GUI.color = defColor;
 				}
 				
@@ -580,11 +585,11 @@ public class ResourceChecker : EditorWindow {
 					}
 				} else {
 					GUI.color = new Color (defColor.r, defColor.g, defColor.b, 0.5f);
-					GUILayout.Label("   0 static batching");
+					GUILayout.Label(" 0 static batching", GUILayout.Width(120));
 					GUI.color = defColor;
 				}
 
-
+				GUILayout.Label(AssetDatabase.GetAssetPath(tDetails.mesh), GUILayout.Width(300));
 				GUILayout.EndHorizontal();	
 			}
 		}
@@ -636,7 +641,7 @@ public class ResourceChecker : EditorWindow {
 					//audioLabel += "[]\n" + "";
 				audioLabel += "\n" + audio.clip.length + " s";
 
-				GUILayout.Label(audioLabel);
+				GUILayout.Label(audioLabel, GUILayout.Width(140));
 
 				if (GUILayout.Button("GO", GUILayout.Width(50)))
 				{
@@ -645,6 +650,7 @@ public class ResourceChecker : EditorWindow {
 					SelectObjects(FoundObjects, ctrlPressed);
 				}
 
+				GUILayout.Label(AssetDatabase.GetAssetPath(audio.clip), GUILayout.Width(300));
 				GUILayout.EndHorizontal();
 			}
 		}
@@ -762,7 +768,7 @@ public class ResourceChecker : EditorWindow {
 				
 				if (lightmapData.lightmapDir != null) 
 				{
-					var textureDetail = GetTextureDetail (lightmapData.lightmapColor);
+					var textureDetail = GetTextureDetail (lightmapData.lightmapDir);
 					
 					if (!ActiveTextures.Contains (textureDetail)) 
 						ActiveTextures.Add (textureDetail);
