@@ -96,12 +96,12 @@ public class MissingGraphic{
 public class ResourceChecker : EditorWindow {
 
 
-	string[] inspectToolbarStrings = {"Textures", "Materials","Meshes"};
+	string[] inspectToolbarStrings = {"Textures", "Materials","Meshes", "Audio"};
 	string[] inspectToolbarStrings2 = {"Textures", "Materials","Meshes", "Missing"};
 
 	enum InspectType 
 	{
-		Textures,Materials,Meshes,Missing
+		Textures,Materials,Meshes,Missing, Audios
 	};
 
 	bool IncludeDisabledObjects=true;
@@ -120,11 +120,13 @@ public class ResourceChecker : EditorWindow {
 	List<MaterialDetails> ActiveMaterials=new List<MaterialDetails>();
 	List<MeshDetails> ActiveMeshDetails=new List<MeshDetails>();
 	List<MissingGraphic> MissingObjects = new List<MissingGraphic> ();
+	List<AudioClip> ActiveAudios = new List<AudioClip>();
 
 	Vector2 textureListScrollPos=new Vector2(0,0);
 	Vector2 materialListScrollPos=new Vector2(0,0);
 	Vector2 meshListScrollPos=new Vector2(0,0);
 	Vector2 missingListScrollPos = new Vector2 (0,0);
+	Vector2 audioListScrollPos=new Vector2(0,0);
 
 	int TotalTextureMemory=0;
 	int TotalMeshVertices=0;
@@ -171,6 +173,7 @@ public class ResourceChecker : EditorWindow {
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
 		GUILayout.Label("Meshes "+ActiveMeshDetails.Count+" - "+TotalMeshVertices+" verts");
+		GUILayout.Label("Audios "+ActiveAudios.Count);
 		GUILayout.EndHorizontal();
 		if (thingsMissing == true) {
 			ActiveInspectType = (InspectType)GUILayout.Toolbar ((int)ActiveInspectType, inspectToolbarStrings2);
@@ -194,6 +197,9 @@ public class ResourceChecker : EditorWindow {
 		case InspectType.Missing:
 			ListMissing();
 			break;
+		case InspectType.Audios:
+			ListAudios();
+			break;		
 		}
 	}
 
@@ -584,6 +590,21 @@ public class ResourceChecker : EditorWindow {
 		}
 		EditorGUILayout.EndScrollView();
 	}
+	void ListAudios() {
+		audioListScrollPos = EditorGUILayout.BeginScrollView(audioListScrollPos);
+		foreach (var audio in ActiveAudios) {
+			GUILayout.BeginHorizontal();
+			GUILayout.Label(audio.name);		
+			if(GUILayout.Button("GO", GUILayout.Width(50)))
+			{
+				var l = new List<Object>();				
+				l.Add(audio);
+				SelectObjects(l, false);
+			}
+			GUILayout.EndHorizontal();
+		}
+		GUILayout.EndScrollView();
+	}
 
 	string FormatSizeString(int memSizeKB)
 	{
@@ -633,6 +654,7 @@ public class ResourceChecker : EditorWindow {
 		ActiveMaterials.Clear();
 		ActiveMeshDetails.Clear();
 		MissingObjects.Clear ();
+		ActiveAudios.Clear();
 		thingsMissing = false;
 
 		Renderer[] renderers = FindObjects<Renderer>();
@@ -988,6 +1010,13 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 
+		AudioClip[] audios;
+		audios = (AudioClip[]) Resources.FindObjectsOfTypeAll(typeof(AudioClip));
+		
+		foreach (AudioClip clip in audios) {
+			ActiveAudios.Add(clip);
+		}
+		
 		TotalTextureMemory = 0;
 		foreach (TextureDetails tTextureDetails in ActiveTextures) TotalTextureMemory += tTextureDetails.memSizeKB;
 
