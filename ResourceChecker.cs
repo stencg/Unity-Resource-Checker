@@ -87,7 +87,7 @@ public class MeshDetails
 	}
 };
 
-public class MissingGraphic{
+public class Missing{
 	public Transform Object;
 	public string type;
 	public string name;
@@ -96,12 +96,12 @@ public class MissingGraphic{
 public class ResourceChecker : EditorWindow {
 
 
-	string[] inspectToolbarStrings = {"Textures", "Materials","Meshes", "Audio"};
-	string[] inspectToolbarStrings2 = {"Textures", "Materials","Meshes", "Missing"};
+	string[] inspectToolbarStrings = {"Textures", "Materials", "Meshes", "Audio", "Missing" };
+	string[] inspectToolbarStrings2 = {"Textures", "Materials", "Meshes", "Audio", "Missing" };
 
 	enum InspectType 
 	{
-		Textures,Materials,Meshes,Missing, Audios
+		Textures, Materials, Meshes, Audios, Missing
 	};
 
 	bool IncludeDisabledObjects=true;
@@ -119,14 +119,14 @@ public class ResourceChecker : EditorWindow {
 	List<TextureDetails> ActiveTextures=new List<TextureDetails>();
 	List<MaterialDetails> ActiveMaterials=new List<MaterialDetails>();
 	List<MeshDetails> ActiveMeshDetails=new List<MeshDetails>();
-	List<MissingGraphic> MissingObjects = new List<MissingGraphic> ();
-	List<AudioClip> ActiveAudios = new List<AudioClip>();
+	List<AudioSource> ActiveAudios = new List<AudioSource>();
+	List<Missing> MissingObjects = new List<Missing> ();
 
 	Vector2 textureListScrollPos=new Vector2(0,0);
 	Vector2 materialListScrollPos=new Vector2(0,0);
 	Vector2 meshListScrollPos=new Vector2(0,0);
+	Vector2 audioListScrollPos = new Vector2(0, 0);
 	Vector2 missingListScrollPos = new Vector2 (0,0);
-	Vector2 audioListScrollPos=new Vector2(0,0);
 
 	int TotalTextureMemory=0;
 	int TotalMeshVertices=0;
@@ -167,7 +167,7 @@ public class ResourceChecker : EditorWindow {
 
 		GUILayout.Space(30);
 		if (thingsMissing == true) {
-			EditorGUI.HelpBox (new Rect(8,93,300,25),"Some GameObjects are missing graphical elements.", MessageType.Error);
+			EditorGUI.HelpBox (new Rect(8,93,300,25),"Some GameObjects are missing elements.", MessageType.Error);
 		}
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
@@ -175,13 +175,16 @@ public class ResourceChecker : EditorWindow {
 		GUILayout.Label("Meshes "+ActiveMeshDetails.Count+" - "+TotalMeshVertices+" verts");
 		GUILayout.Label("Audios "+ActiveAudios.Count);
 		GUILayout.EndHorizontal();
-		if (thingsMissing == true) {
-			ActiveInspectType = (InspectType)GUILayout.Toolbar ((int)ActiveInspectType, inspectToolbarStrings2);
-		} else {
-			ActiveInspectType = (InspectType)GUILayout.Toolbar ((int)ActiveInspectType, inspectToolbarStrings);
+		if (thingsMissing == true)
+		{
+			ActiveInspectType = (InspectType)GUILayout.Toolbar((int)ActiveInspectType, inspectToolbarStrings2);
+		}
+		else
+		{
+			ActiveInspectType = (InspectType)GUILayout.Toolbar((int)ActiveInspectType, inspectToolbarStrings);
 		}
 
-		ctrlPressed=Event.current.control || Event.current.command;
+		ctrlPressed =Event.current.control || Event.current.command;
 
 		switch (ActiveInspectType)
 		{
@@ -210,11 +213,12 @@ public class ResourceChecker : EditorWindow {
 			ActiveTextures.Clear();
 			ActiveMaterials.Clear();
 			ActiveMeshDetails.Clear();
-			MissingObjects.Clear ();
+			ActiveAudios.Clear();
+			MissingObjects.Clear();
 			thingsMissing = false;
 			collectedInPlayingMode = Application.isPlaying;
 		}
-		
+		ActiveAudios.RemoveAll(x => !x.clip);
 		ActiveTextures.RemoveAll(x => !x.texture);
 		ActiveTextures.ForEach(delegate(TextureDetails obj) {
 			obj.FoundInAnimators.RemoveAll(x => !x);
@@ -512,6 +516,7 @@ public class ResourceChecker : EditorWindow {
 			if (tDetails.mesh!=null)
 			{
 				GUILayout.BeginHorizontal ();
+				GUILayout.Box(AssetPreview.GetAssetPreview(tDetails.mesh), GUILayout.Width(ThumbnailWidth), GUILayout.Height(ThumbnailHeight));
 				string name = tDetails.mesh.name;
 				if (name == null || name.Count() < 1)
 					name = tDetails.FoundInMeshFilters[0].gameObject.name;
@@ -568,7 +573,7 @@ public class ResourceChecker : EditorWindow {
 
 	void ListMissing(){
 		missingListScrollPos = EditorGUILayout.BeginScrollView(missingListScrollPos);
-		foreach (MissingGraphic dMissing in MissingObjects) {
+		foreach (Missing dMissing in MissingObjects) {
 			GUILayout.BeginHorizontal ();
 			if (GUILayout.Button (dMissing.name, GUILayout.Width (150)))
 				SelectObject (dMissing.Object, ctrlPressed);
@@ -593,15 +598,27 @@ public class ResourceChecker : EditorWindow {
 	void ListAudios() {
 		audioListScrollPos = EditorGUILayout.BeginScrollView(audioListScrollPos);
 		foreach (var audio in ActiveAudios) {
-			GUILayout.BeginHorizontal();
-			GUILayout.Label(audio.name);		
-			if(GUILayout.Button("GO", GUILayout.Width(50)))
+			if (audio.clip != null)
 			{
-				var l = new List<Object>();				
-				l.Add(audio);
-				SelectObjects(l, false);
+				GUILayout.BeginHorizontal();
+				GUILayout.Box(AssetPreview.GetAssetPreview(audio.clip), GUILayout.Width(ThumbnailWidth), GUILayout.Height(ThumbnailHeight));
+				if (GUILayout.Button(audio.clip.name, GUILayout.Width(150)))
+				{
+					SelectObject(audio.clip, ctrlPressed);
+				}
+				GUI.color = defColor;
+
+				//GUILayout.Label(audio.clip.name);
+
+				if (GUILayout.Button("GO", GUILayout.Width(50)))
+				{
+					List<Object> FoundObjects = new List<Object>();
+					FoundObjects.Add(audio.gameObject);
+					SelectObjects(FoundObjects, ctrlPressed);
+				}
+
+				GUILayout.EndHorizontal();
 			}
-			GUILayout.EndHorizontal();
 		}
 		GUILayout.EndScrollView();
 	}
@@ -653,7 +670,7 @@ public class ResourceChecker : EditorWindow {
 		ActiveTextures.Clear();
 		ActiveMaterials.Clear();
 		ActiveMeshDetails.Clear();
-		MissingObjects.Clear ();
+		MissingObjects.Clear();
 		ActiveAudios.Clear();
 		thingsMissing = false;
 
@@ -691,7 +708,7 @@ public class ResourceChecker : EditorWindow {
 						ActiveTextures.Add (tSpriteTextureDetail);
 					}
 				} else if (tSpriteRenderer.sprite == null) {
-					MissingGraphic tMissing = new MissingGraphic ();
+					Missing tMissing = new Missing ();
 					tMissing.Object = tSpriteRenderer.transform;
 					tMissing.type = "sprite";
 					tMissing.name = tSpriteRenderer.transform.name;
@@ -800,7 +817,6 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 
-
 		MeshFilter[] meshFilters = FindObjects<MeshFilter>();
 
 		foreach (MeshFilter tMeshFilter in meshFilters)
@@ -823,7 +839,7 @@ public class ResourceChecker : EditorWindow {
 				}
 				
 			} else if (tMesh == null && tMeshFilter.transform.GetComponent("TextContainer")== null) {
-				MissingGraphic tMissing = new MissingGraphic ();
+				Missing tMissing = new Missing ();
 				tMissing.Object = tMeshFilter.transform;
 				tMissing.type = "mesh";
 				tMissing.name = tMeshFilter.transform.name;
@@ -834,7 +850,7 @@ public class ResourceChecker : EditorWindow {
 			var meshRenderrer = tMeshFilter.transform.GetComponent<MeshRenderer>();
 				
 			if (meshRenderrer == null || meshRenderrer.sharedMaterial == null) {
-				MissingGraphic tMissing = new MissingGraphic ();
+				Missing tMissing = new Missing ();
 				tMissing.Object = tMeshFilter.transform;
 				tMissing.type = "material";
 				tMissing.name = tMeshFilter.transform.name;
@@ -859,7 +875,7 @@ public class ResourceChecker : EditorWindow {
 				}
 				tMeshDetails.FoundInSkinnedMeshRenderer.Add(tSkinnedMeshRenderer);
 			} else if (tMesh == null) {
-				MissingGraphic tMissing = new MissingGraphic ();
+				Missing tMissing = new Missing ();
 				tMissing.Object = tSkinnedMeshRenderer.transform;
 				tMissing.type = "mesh";
 				tMissing.name = tSkinnedMeshRenderer.transform.name;
@@ -867,7 +883,7 @@ public class ResourceChecker : EditorWindow {
 				thingsMissing = true;
 			}
 			if (tSkinnedMeshRenderer.sharedMaterial == null) {
-				MissingGraphic tMissing = new MissingGraphic ();
+				Missing tMissing = new Missing ();
 				tMissing.Object = tSkinnedMeshRenderer.transform;
 				tMissing.type = "material";
 				tMissing.name = tSkinnedMeshRenderer.transform.name;
@@ -1010,11 +1026,21 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 
-		AudioClip[] audios;
-		audios = (AudioClip[]) Resources.FindObjectsOfTypeAll(typeof(AudioClip));
-		
-		foreach (AudioClip clip in audios) {
-			ActiveAudios.Add(clip);
+		AudioSource[] audios;
+		audios = (AudioSource[])FindObjectsOfType(typeof(AudioSource));
+
+		foreach (AudioSource audio in audios) {
+			if (audio.clip != null)
+			ActiveAudios.Add(audio);
+			else if (audio.clip == null)
+			{
+				Missing tMissing = new Missing();
+				tMissing.Object = audio.transform;
+				tMissing.type = "audio clip";
+				tMissing.name = audio.transform.name;
+				MissingObjects.Add(tMissing);
+				thingsMissing = true;
+			}
 		}
 		
 		TotalTextureMemory = 0;
