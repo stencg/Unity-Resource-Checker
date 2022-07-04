@@ -631,7 +631,12 @@ public class ResourceChecker : EditorWindow {
 				}
 				GUI.color = defColor;
 
-				//GUILayout.Label(audio.clip.name);
+				string audioLabel = "Chs: " + audio.clip.channels + " - " + audio.clip.frequency + " Hz";
+				//if (audio.clip.)
+					//audioLabel += "[]\n" + "";
+				audioLabel += "\n" + audio.clip.length + " s";
+
+				GUILayout.Label(audioLabel);
 
 				if (GUILayout.Button("GO", GUILayout.Width(50)))
 				{
