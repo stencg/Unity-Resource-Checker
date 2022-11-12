@@ -12,6 +12,8 @@ using UnityEngine.UI;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine.WSA;
+using Application = UnityEngine.Application;
 using Object = UnityEngine.Object;
 
 public class TextureDetails : IEquatable<TextureDetails>
@@ -27,6 +29,7 @@ public class TextureDetails : IEquatable<TextureDetails>
 	public List<Object> FoundInScripts = new List<Object>();
 	public List<Object> FoundInGraphics = new List<Object>();
 	public List<Object> FoundInButtons = new List<Object>();
+	public List<Object> FoundInProjectFolder = new List<Object>();
 	public bool isSky;
 	public bool instance;
 	public bool isgui;
@@ -109,6 +112,7 @@ public class ResourceChecker : EditorWindow {
 	bool IncludeScriptReferences=true;
 	bool IncludeGuiElements=true;
 	bool IncludeLightmapTextures=true;
+	bool IncludeSelectedFolder = false;
 	bool thingsMissing = false;
 
 	InspectType ActiveInspectType=InspectType.Textures;
@@ -152,27 +156,34 @@ public class ResourceChecker : EditorWindow {
 	{
 		defColor = GUI.color;
 		IncludeDisabledObjects = GUILayout.Toggle(IncludeDisabledObjects, "Include disabled objects", GUILayout.Width(300));
-		IncludeSpriteAnimations = GUILayout.Toggle(IncludeSpriteAnimations, "Look in sprite animations", GUILayout.Width(300));
+		IncludeSpriteAnimations = GUILayout.Toggle(IncludeSpriteAnimations, "Look in sprite animations (Texture2Ds)", GUILayout.Width(300));
 		GUI.color = new Color (0.8f, 0.8f, 1.0f, 1.0f);
-		IncludeScriptReferences = GUILayout.Toggle(IncludeScriptReferences, "Look in behavior fields", GUILayout.Width(300));
+		IncludeScriptReferences = GUILayout.Toggle(IncludeScriptReferences, "Look in behavior fields (Texture2Ds, mats, meshes)", GUILayout.Width(300));
 		GUI.color = new Color (1.0f, 0.95f, 0.8f, 1.0f);
-		IncludeGuiElements = GUILayout.Toggle(IncludeGuiElements, "Look in GUI elements", GUILayout.Width(300));
+		IncludeGuiElements = GUILayout.Toggle(IncludeGuiElements, "Look in GUI elements (Texture2Ds, mats)", GUILayout.Width(300));
 		IncludeLightmapTextures = GUILayout.Toggle(IncludeLightmapTextures, "Look in Lightmap textures", GUILayout.Width(300));
 		GUI.color = defColor;
-		GUILayout.BeginArea(new Rect(position.width-85,5,100,65));
+		IncludeSelectedFolder = GUILayout.Toggle(IncludeSelectedFolder, "Look in Selected Folders (Texture2Ds)", GUILayout.Width(300));
+		GUILayout.BeginArea(new Rect(position.width-85,5,100,85));
 		if (GUILayout.Button("Calculate",GUILayout.Width(80), GUILayout.Height(40)))
 			CheckResources();
 		if (GUILayout.Button("CleanUp",GUILayout.Width(80), GUILayout.Height(20)))
 			Resources.UnloadUnusedAssets();
+		/*if (GUILayout.Button("Log", GUILayout.Width(80), GUILayout.Height(20)))
+		{
+			// TODO
+			// Write to log file
+		}*/
 		GUILayout.EndArea();
 		RemoveDestroyedResources();
 
-		GUILayout.Space(100);
+		GUILayout.Space(120);
 		if (thingsMissing == true) {
-			EditorGUI.HelpBox (new Rect(8,93,300,25),"Some GameObjects are missing elements.", MessageType.Error);
+			EditorGUI.HelpBox (new Rect(8,105,300,25),"Some GameObjects are missing elements.", MessageType.Error);
 		}
-		EditorGUI.HelpBox(new Rect(8, 123, 300, 25), "Crunch textures have approximate size", MessageType.Warning);
-		EditorGUI.HelpBox(new Rect(8, 153, 300, 25), "ASTC not support", MessageType.Warning);
+		EditorGUI.HelpBox(new Rect(8, 135, 300, 25), "It always checks GOs in opened scenes.", MessageType.Info);
+		EditorGUI.HelpBox(new Rect(8, 160, 300, 25), "Crunched formats use VRAM as uncrunched ones.", MessageType.Warning);
+		EditorGUI.HelpBox(new Rect(8, 185, 300, 25), "ASTC is not yet supported ", MessageType.Warning);
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
@@ -236,6 +247,7 @@ public class ResourceChecker : EditorWindow {
 			obj.FoundInRenderers.RemoveAll(x => !x);
 			obj.FoundInScripts.RemoveAll(x => !x);
 			obj.FoundInGraphics.RemoveAll(x => !x);
+			obj.FoundInProjectFolder.RemoveAll(x => !x);
 		});
 
 		ActiveMaterials.RemoveAll(x => !x.material);
@@ -278,13 +290,13 @@ public class ResourceChecker : EditorWindow {
 			return 16;
 		case TextureFormat.DXT1:	// Compressed color texture format.
 			return 4;
-		case TextureFormat.DXT1Crunched:    // Compressed color texture format.
-			return 1;
+		case TextureFormat.DXT1Crunched:    // Crunched formats uses VRAM as uncrunched ones.
+			return 4;
 		case TextureFormat.DXT5:	// Compressed color with alpha channel texture format.
 			return 8;
-		case TextureFormat.DXT5Crunched:
-			return 2;
-		case TextureFormat.BC4:    // Compressed R channel texture format.
+		case TextureFormat.DXT5Crunched: // Crunched formats uses VRAM as uncrunched ones.
+			return 8;
+		case TextureFormat.BC4:    // Compressed R channel texture format. 
 			return 4;
 		case TextureFormat.BC7:    // Compressed color with alpha channel texture format.
 			return 8;
@@ -307,16 +319,16 @@ public class ResourceChecker : EditorWindow {
 			return 4;
 		case TextureFormat.PVRTC_RGBA4://	 PowerVR (iOS) 4 bits/pixel compressed with alpha channel texture format
 			return 4;
-		case TextureFormat.ETC_RGB4://	 ETC (GLES2.0) 4 bits/pixel compressed RGB texture format.
+		case TextureFormat.ETC_RGB4:
 			return 4;
-		case TextureFormat.ETC_RGB4Crunched:
-			return 1;
+		case TextureFormat.ETC_RGB4Crunched: // Crunched formats uses VRAM as uncrunched ones.
+			return 4;
 		case TextureFormat.ETC2_RGBA8:
 			return 8;
 		case TextureFormat.ETC2_RGB:
 			return 4;
-		case TextureFormat.ETC2_RGBA8Crunched:
-			return 2;
+		case TextureFormat.ETC2_RGBA8Crunched: // Crunched format uses VRAM as uncrunched one.
+			return 4;
 		case TextureFormat.EAC_R:
 			return 4;
 		case TextureFormat.BGRA32://	 Format returned by iPhone camera
@@ -369,8 +381,7 @@ public class ResourceChecker : EditorWindow {
 		}
 		return 0;
 	}
-
-
+	
 	void SelectObject(Object selectedObject,bool append)
 	{
 		if (append)
@@ -445,7 +456,7 @@ public class ResourceChecker : EditorWindow {
 			{
 				SelectObjects(new List<Object>(FoundObjects),ctrlPressed);
 			}
-			GUILayout.Label(AssetDatabase.GetAssetPath(tDetails.texture), GUILayout.Width(300));
+			GUILayout.Label(AssetDatabase.GetAssetPath(tDetails.texture), GUILayout.Width(1000));
 			GUILayout.EndHorizontal();	
 		}
 		if (ActiveTextures.Count>0)
@@ -531,7 +542,6 @@ public class ResourceChecker : EditorWindow {
 
 		return first.material.renderQueue - second.material.renderQueue;
 	}
-	
 	void ListMeshes()
 	{
 		meshListScrollPos = EditorGUILayout.BeginScrollView(meshListScrollPos);
@@ -595,7 +605,6 @@ public class ResourceChecker : EditorWindow {
 		}
 		EditorGUILayout.EndScrollView();		
 	}
-
 	void ListMissing(){
 		missingListScrollPos = EditorGUILayout.BeginScrollView(missingListScrollPos);
 		foreach (Missing dMissing in MissingObjects) {
@@ -666,8 +675,7 @@ public class ResourceChecker : EditorWindow {
 			return memSizeMB.ToString("0.00")+"Mb";
 		}
 	}
-
-
+	
 	TextureDetails FindTextureDetails(Texture tTexture)
 	{
 		foreach (TextureDetails tTextureDetails in ActiveTextures)
@@ -697,8 +705,7 @@ public class ResourceChecker : EditorWindow {
 		return null;
 
 	}
-
-
+	
 	void CheckResources()
 	{
 		ActiveTextures.Clear();
@@ -851,7 +858,6 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 
-
 		MeshFilter[] meshFilters = FindObjects<MeshFilter>();
 
 		foreach (MeshFilter tMeshFilter in meshFilters)
@@ -948,7 +954,51 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 
+		if (IncludeSelectedFolder) {
+			if (Selection.objects.Length != 0)
+			{
+				var folders = new List<string>();
+				foreach (var obj in Selection.objects)
+				{
+					if (obj.GetType() != typeof(DefaultAsset)) continue;
+					var path = AssetDatabase.GetAssetPath(obj);
+					folders.Add(path);
+				}
 
+				if (folders.Count != 0)
+				{
+					var guids = AssetDatabase.FindAssets("t:texture2D", folders.ToArray());
+					if (guids.Length != 0)
+					{
+						foreach (var guid in guids)
+						{
+							var path = AssetDatabase.GUIDToAssetPath(guid);
+							var item = AssetDatabase.LoadAssetAtPath<Texture>(path);
+							if (item.GetType() != typeof(Texture2D)) continue;
+							// TODO
+							// Count other texture types, like Cubemap
+							var textureDetail = GetTextureDetail(item);
+							if (!ActiveTextures.Contains(textureDetail))
+								ActiveTextures.Add(textureDetail);
+						}
+					}
+					// TODO
+					/*guids = AssetDatabase.FindAssets("t:AudioClip", folders.ToArray());
+					if (guids.Length != 0)
+					{
+						foreach (var guid in guids)
+						{
+							var path = AssetDatabase.GUIDToAssetPath(guid);
+							var item = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+							if (item.GetType() != typeof(AudioClip)) continue;
+							// here
+						}
+						
+					}*/
+				}
+			}
+		}
+		
 		if (IncludeSpriteAnimations)
 		{
 			Animator[] animators = FindObjects<Animator>();
@@ -1019,6 +1069,8 @@ public class ResourceChecker : EditorWindow {
 				foreach (FieldInfo field in fields)
 				{
 					System.Type fieldType = field.FieldType;
+					// TODO
+					// Handle directly AudioClip, Texture2D (+ other Textures) types
 					if (fieldType == typeof(Sprite))
 					{
 						Sprite tSprite = field.GetValue(script) as Sprite;
