@@ -12,7 +12,6 @@ using UnityEngine.UI;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Reflection;
-using UnityEngine.WSA;
 using Application = UnityEngine.Application;
 using Object = UnityEngine.Object;
 
@@ -29,14 +28,11 @@ public class TextureDetails : IEquatable<TextureDetails>
 	public List<Object> FoundInScripts = new List<Object>();
 	public List<Object> FoundInGraphics = new List<Object>();
 	public List<Object> FoundInButtons = new List<Object>();
-	public List<Object> FoundInProjectFolder = new List<Object>();
+	//public List<Object> FoundInProjectFolder = new List<Object>();
 	public bool isSky;
 	public bool instance;
 	public bool isgui;
-	public TextureDetails()
-	{
-
-	}
+	public TextureDetails() {}
 
     public bool Equals(TextureDetails other)
     {
@@ -90,6 +86,16 @@ public class MeshDetails
 	}
 };
 
+public class ClipDetails
+{
+
+	public AudioClip clip;
+
+	public List<AudioSource> FoundInAudioSources = new List<AudioSource>();
+
+	public ClipDetails() {}
+};
+
 public class Missing{
 	public Transform Object;
 	public string type;
@@ -104,7 +110,7 @@ public class ResourceChecker : EditorWindow {
 
 	enum InspectType 
 	{
-		Textures, Materials, Meshes, Audios, Missing
+		Textures, Materials, Meshes, AudioClips, Missing
 	};
 
 	bool IncludeDisabledObjects=true;
@@ -123,7 +129,7 @@ public class ResourceChecker : EditorWindow {
 	List<TextureDetails> ActiveTextures=new List<TextureDetails>();
 	List<MaterialDetails> ActiveMaterials=new List<MaterialDetails>();
 	List<MeshDetails> ActiveMeshDetails=new List<MeshDetails>();
-	List<AudioSource> ActiveAudios = new List<AudioSource>();
+	List<ClipDetails> ActiveClipDetails = new List<ClipDetails>();
 	List<Missing> MissingObjects = new List<Missing> ();
 
 	Vector2 textureListScrollPos=new Vector2(0,0);
@@ -156,14 +162,14 @@ public class ResourceChecker : EditorWindow {
 	{
 		defColor = GUI.color;
 		IncludeDisabledObjects = GUILayout.Toggle(IncludeDisabledObjects, "Include disabled objects", GUILayout.Width(300));
-		IncludeSpriteAnimations = GUILayout.Toggle(IncludeSpriteAnimations, "Look in sprite animations (Texture2Ds)", GUILayout.Width(300));
+		IncludeSpriteAnimations = GUILayout.Toggle(IncludeSpriteAnimations, "Look in sprite animations (Textures)", GUILayout.Width(300));
 		GUI.color = new Color (0.8f, 0.8f, 1.0f, 1.0f);
-		IncludeScriptReferences = GUILayout.Toggle(IncludeScriptReferences, "Look in behavior fields (Texture2Ds, mats, meshes)", GUILayout.Width(300));
+		IncludeScriptReferences = GUILayout.Toggle(IncludeScriptReferences, "Look in behavior fields (Textures, mats, meshes)", GUILayout.Width(300));
 		GUI.color = new Color (1.0f, 0.95f, 0.8f, 1.0f);
-		IncludeGuiElements = GUILayout.Toggle(IncludeGuiElements, "Look in GUI elements (Texture2Ds, mats)", GUILayout.Width(300));
+		IncludeGuiElements = GUILayout.Toggle(IncludeGuiElements, "Look in GUI elements (Textures, mats)", GUILayout.Width(300));
 		IncludeLightmapTextures = GUILayout.Toggle(IncludeLightmapTextures, "Look in Lightmap textures", GUILayout.Width(300));
 		GUI.color = defColor;
-		IncludeSelectedFolder = GUILayout.Toggle(IncludeSelectedFolder, "Look in Selected Folders (Texture2Ds)", GUILayout.Width(300));
+		IncludeSelectedFolder = GUILayout.Toggle(IncludeSelectedFolder, "Look in Selected Folders (Textures, Audio)", GUILayout.Width(300));
 		GUILayout.BeginArea(new Rect(position.width-85,5,100,85));
 		if (GUILayout.Button("Calculate",GUILayout.Width(80), GUILayout.Height(40)))
 			CheckResources();
@@ -188,7 +194,7 @@ public class ResourceChecker : EditorWindow {
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
 		GUILayout.Label("Meshes "+ActiveMeshDetails.Count+" - "+TotalMeshVertices+" verts");
-		GUILayout.Label("Audios "+ActiveAudios.Count);
+		GUILayout.Label("Audio Clips "+ActiveClipDetails.Count);
 		if (thingsMissing == true)
 		{
 			GUILayout.Label("Missings " + MissingObjects.Count);
@@ -221,8 +227,8 @@ public class ResourceChecker : EditorWindow {
 		case InspectType.Missing:
 			ListMissing();
 			break;
-		case InspectType.Audios:
-			ListAudios();
+		case InspectType.AudioClips:
+			ListAudioClips();
 			break;		
 		}
 	}
@@ -234,12 +240,15 @@ public class ResourceChecker : EditorWindow {
 			ActiveTextures.Clear();
 			ActiveMaterials.Clear();
 			ActiveMeshDetails.Clear();
-			ActiveAudios.Clear();
+			ActiveClipDetails.Clear();
 			MissingObjects.Clear();
 			thingsMissing = false;
 			collectedInPlayingMode = Application.isPlaying;
 		}
-		ActiveAudios.RemoveAll(x => !x.clip);
+		ActiveClipDetails.RemoveAll(x => !x.clip);
+		ActiveClipDetails.ForEach(delegate (ClipDetails obj) {
+			obj.FoundInAudioSources.RemoveAll(x => !x);
+		});
 		ActiveTextures.RemoveAll(x => !x.texture);
 		ActiveTextures.ForEach(delegate(TextureDetails obj) {
 			obj.FoundInAnimators.RemoveAll(x => !x);
@@ -247,7 +256,7 @@ public class ResourceChecker : EditorWindow {
 			obj.FoundInRenderers.RemoveAll(x => !x);
 			obj.FoundInScripts.RemoveAll(x => !x);
 			obj.FoundInGraphics.RemoveAll(x => !x);
-			obj.FoundInProjectFolder.RemoveAll(x => !x);
+			//obj.FoundInProjectFolder.RemoveAll(x => !x);
 		});
 
 		ActiveMaterials.RemoveAll(x => !x.material);
@@ -632,36 +641,34 @@ public class ResourceChecker : EditorWindow {
 		}
 		EditorGUILayout.EndScrollView();
 	}
-	void ListAudios() {
+	void ListAudioClips() {
 		audioListScrollPos = EditorGUILayout.BeginScrollView(audioListScrollPos);
-		foreach (var audio in ActiveAudios) {
-			if (audio.clip != null)
+		foreach (var aDetails in ActiveClipDetails) {
+			AudioClip clip = aDetails.clip;
+			GUILayout.BeginHorizontal();
+			GUILayout.Box(AssetPreview.GetAssetPreview(clip), GUILayout.Width(ThumbnailWidth), GUILayout.Height(ThumbnailHeight));
+			if (GUILayout.Button(clip.name, GUILayout.Width(150)))
 			{
-				GUILayout.BeginHorizontal();
-				GUILayout.Box(AssetPreview.GetAssetPreview(audio.clip), GUILayout.Width(ThumbnailWidth), GUILayout.Height(ThumbnailHeight));
-				if (GUILayout.Button(audio.clip.name, GUILayout.Width(150)))
-				{
-					SelectObject(audio.clip, ctrlPressed);
-				}
-				GUI.color = defColor;
-
-				string audioLabel = "Chs: " + audio.clip.channels + " - " + audio.clip.frequency + " Hz";
-				//if (audio.clip.)
-					//audioLabel += "[]\n" + "";
-				audioLabel += "\n" + audio.clip.length + " s";
-
-				GUILayout.Label(audioLabel, GUILayout.Width(140));
-
-				if (GUILayout.Button("GO", GUILayout.Width(50)))
-				{
-					List<Object> FoundObjects = new List<Object>();
-					FoundObjects.Add(audio.gameObject);
-					SelectObjects(FoundObjects, ctrlPressed);
-				}
-
-				GUILayout.Label(AssetDatabase.GetAssetPath(audio.clip), GUILayout.Width(300));
-				GUILayout.EndHorizontal();
+				SelectObject(clip, ctrlPressed);
 			}
+			GUI.color = defColor;
+
+			string audioLabel = "Chs: " + clip.channels + " - " + clip.frequency + " Hz";
+			//if (audio.clip.)
+				//audioLabel += "[]\n" + "";
+			audioLabel += "\n" + clip.length + " s";
+
+			GUILayout.Label(audioLabel, GUILayout.Width(140));
+
+			HashSet<Object> FoundObjects = new HashSet<Object>();
+			foreach (AudioSource source in aDetails.FoundInAudioSources) FoundObjects.Add(source.gameObject);
+			if (GUILayout.Button(FoundObjects.Count + " GO", GUILayout.Width(50)))
+			{
+				SelectObjects(new List<Object>(FoundObjects), ctrlPressed);
+			}
+
+			GUILayout.Label(AssetDatabase.GetAssetPath(clip), GUILayout.Width(300));
+			GUILayout.EndHorizontal();
 		}
 		GUILayout.EndScrollView();
 	}
@@ -705,14 +712,24 @@ public class ResourceChecker : EditorWindow {
 		return null;
 
 	}
-	
+
+	ClipDetails FindClipDetails(AudioClip tClip)
+	{
+		foreach (ClipDetails tClipDetails in ActiveClipDetails)
+		{
+			if (tClipDetails.clip == tClip) return tClipDetails;
+		}
+		return null;
+
+	}
+
 	void CheckResources()
 	{
 		ActiveTextures.Clear();
 		ActiveMaterials.Clear();
 		ActiveMeshDetails.Clear();
 		MissingObjects.Clear();
-		ActiveAudios.Clear();
+		ActiveClipDetails.Clear();
 		thingsMissing = false;
 
 		Renderer[] renderers = FindObjects<Renderer>();
@@ -720,7 +737,7 @@ public class ResourceChecker : EditorWindow {
 		MaterialDetails skyMat = new MaterialDetails ();
 		skyMat.material = RenderSettings.skybox;
 		skyMat.isSky = true;
-		ActiveMaterials.Add (skyMat);
+		ActiveMaterials.Add(skyMat);
 
 		//Debug.Log("Total renderers "+renderers.Length);
 		foreach (Renderer renderer in renderers)
@@ -744,16 +761,16 @@ public class ResourceChecker : EditorWindow {
 				SpriteRenderer tSpriteRenderer = (SpriteRenderer)renderer;
 
 				if (tSpriteRenderer.sprite != null) {
-					var tSpriteTextureDetail = GetTextureDetail (tSpriteRenderer.sprite.texture, renderer);
+					var tSpriteTextureDetail = GetTextureDetail(tSpriteRenderer.sprite.texture, renderer);
 					if (!ActiveTextures.Contains (tSpriteTextureDetail)) {
-						ActiveTextures.Add (tSpriteTextureDetail);
+						ActiveTextures.Add(tSpriteTextureDetail);
 					}
 				} else if (tSpriteRenderer.sprite == null) {
 					Missing tMissing = new Missing ();
 					tMissing.Object = tSpriteRenderer.transform;
 					tMissing.type = "sprite";
 					tMissing.name = tSpriteRenderer.transform.name;
-					MissingObjects.Add (tMissing);
+					MissingObjects.Add(tMissing);
 					thingsMissing = true;
 				}
 			}
@@ -967,34 +984,35 @@ public class ResourceChecker : EditorWindow {
 
 				if (folders.Count != 0)
 				{
-					var guids = AssetDatabase.FindAssets("t:texture2D", folders.ToArray());
+					var guids = AssetDatabase.FindAssets("t:Texture", folders.ToArray());
 					if (guids.Length != 0)
 					{
 						foreach (var guid in guids)
 						{
 							var path = AssetDatabase.GUIDToAssetPath(guid);
 							var item = AssetDatabase.LoadAssetAtPath<Texture>(path);
-							if (item.GetType() != typeof(Texture2D)) continue;
-							// TODO
-							// Count other texture types, like Cubemap
 							var textureDetail = GetTextureDetail(item);
 							if (!ActiveTextures.Contains(textureDetail))
 								ActiveTextures.Add(textureDetail);
 						}
 					}
-					// TODO
-					/*guids = AssetDatabase.FindAssets("t:AudioClip", folders.ToArray());
+					guids = AssetDatabase.FindAssets("t:AudioClip", folders.ToArray());
 					if (guids.Length != 0)
 					{
 						foreach (var guid in guids)
 						{
 							var path = AssetDatabase.GUIDToAssetPath(guid);
 							var item = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
-							if (item.GetType() != typeof(AudioClip)) continue;
-							// here
+							var tClipDetails = FindClipDetails(item);
+							if (tClipDetails == null)
+							{
+								tClipDetails = new ClipDetails();
+								tClipDetails.clip = item;
+								ActiveClipDetails.Add(tClipDetails);
+							}
 						}
 						
-					}*/
+					}
 				}
 			}
 		}
@@ -1135,18 +1153,29 @@ public class ResourceChecker : EditorWindow {
 			}
 		}
 
-		AudioSource[] audios;
-		audios = (AudioSource[])FindObjectsOfType(typeof(AudioSource));
+		AudioSource[] AudioSources;
+		AudioSources = (AudioSource[])FindObjectsOfType(typeof(AudioSource));
 
-		foreach (AudioSource audio in audios) {
-			if (audio.clip != null)
-			ActiveAudios.Add(audio);
-			else if (audio.clip == null)
+		foreach (AudioSource tAudioSource in AudioSources) {
+			AudioClip tClip = tAudioSource.clip;
+			if (tClip != null)
+			{
+				ClipDetails tClipDetails = FindClipDetails(tClip);
+				if (tClipDetails == null)
+				{
+					tClipDetails = new ClipDetails();
+					tClipDetails.clip = tClip;
+					ActiveClipDetails.Add(tClipDetails);
+				}
+				tClipDetails.FoundInAudioSources.Add(tAudioSource);
+
+			}
+			else if (tClip == null)
 			{
 				Missing tMissing = new Missing();
-				tMissing.Object = audio.transform;
+				tMissing.Object = tAudioSource.transform;
 				tMissing.type = "audio clip";
-				tMissing.name = audio.transform.name;
+				tMissing.name = tAudioSource.transform.name;
 				MissingObjects.Add(tMissing);
 				thingsMissing = true;
 			}
