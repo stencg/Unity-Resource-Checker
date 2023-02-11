@@ -12,13 +12,15 @@ using UnityEngine.UI;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Reflection;
+using Game.internal_bridge;
+// using UnityEngine.U2D;
 using Application = UnityEngine.Application;
 using Object = UnityEngine.Object;
 
 public class TextureDetails : IEquatable<TextureDetails>
 {
 	public bool isCubeMap;
-	public int memSizeKB;
+	public float memSizeKB;
 	public Texture texture;
 	public TextureFormat format;
 	public int mipMapCount;
@@ -138,7 +140,7 @@ public class ResourceChecker : EditorWindow {
 	Vector2 audioListScrollPos = new Vector2(0, 0);
 	Vector2 missingListScrollPos = new Vector2 (0,0);
 
-	int TotalTextureMemory=0;
+	float TotalTextureMemory=0;
 	int TotalMeshVertices=0;
 
 	bool ctrlPressed=false;
@@ -189,7 +191,7 @@ public class ResourceChecker : EditorWindow {
 		}
 		EditorGUI.HelpBox(new Rect(8, 135, 300, 25), "It always checks GOs in opened scenes.", MessageType.Info);
 		EditorGUI.HelpBox(new Rect(8, 160, 300, 25), "Crunched formats use VRAM as uncrunched ones.", MessageType.Warning);
-		EditorGUI.HelpBox(new Rect(8, 185, 300, 25), "ASTC is not yet supported ", MessageType.Warning);
+		// EditorGUI.HelpBox(new Rect(8, 185, 300, 25), "ASTC is not yet supported ", MessageType.Warning);
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
@@ -279,7 +281,7 @@ public class ResourceChecker : EditorWindow {
 		foreach (MeshDetails tMeshDetails in ActiveMeshDetails) TotalMeshVertices += tMeshDetails.mesh.vertexCount;
 	}
 
-	int GetBitsPerPixel(TextureFormat format)
+	float GetBitsPerPixel(TextureFormat format)
 	{
 		switch (format)
 		{
@@ -341,12 +343,24 @@ public class ResourceChecker : EditorWindow {
 		case TextureFormat.EAC_R:
 			return 4;
 		case TextureFormat.BGRA32://	 Format returned by iPhone camera
-			return 32;			
+			return 32;		
+		case TextureFormat.ASTC_4x4:
+			return 8;
+		case TextureFormat.ASTC_5x5:
+			return 5.12f;	
+		case TextureFormat.ASTC_6x6:
+			return 3.56f;	
+		case TextureFormat.ASTC_8x8:
+			return 2;	
+		case TextureFormat.ASTC_10x10:
+			return 1.28f;	
+		case TextureFormat.ASTC_12x12:
+			return 0.89f;	
 		}
 		return 0;
 	}
 
-	int CalculateTextureSizeBytes(Texture tTexture)
+	float CalculateTextureSizeBytes(Texture tTexture)
 	{
 
 		int tWidth=tTexture.width;
@@ -354,10 +368,10 @@ public class ResourceChecker : EditorWindow {
 		if (tTexture is Texture2D)
 		{
 			Texture2D tTex2D=tTexture as Texture2D;
-			int bitsPerPixel=GetBitsPerPixel(tTex2D.format);
+			float bitsPerPixel=GetBitsPerPixel(tTex2D.format);
 			int mipMapCount=tTex2D.mipmapCount;
 			int mipLevel=1;
-			int tSize=0;
+			float tSize=0;
 			while (mipLevel<=mipMapCount)
 			{
 				tSize+=tWidth*tHeight*bitsPerPixel/8;
@@ -370,10 +384,10 @@ public class ResourceChecker : EditorWindow {
 		if (tTexture is Texture2DArray)
 		{
 			Texture2DArray tTex2D=tTexture as Texture2DArray;
-			int bitsPerPixel=GetBitsPerPixel(tTex2D.format);
+			float bitsPerPixel=GetBitsPerPixel(tTex2D.format);
 			int mipMapCount=10;
 			int mipLevel=1;
-			int tSize=0;
+			float tSize=0;
 			while (mipLevel<=mipMapCount)
 			{
 				tSize+=tWidth*tHeight*bitsPerPixel/8;
@@ -385,7 +399,7 @@ public class ResourceChecker : EditorWindow {
 		}
 		if (tTexture is Cubemap) {
 			Cubemap tCubemap = tTexture as Cubemap;
-			int bitsPerPixel = GetBitsPerPixel (tCubemap.format);
+			float bitsPerPixel = GetBitsPerPixel (tCubemap.format);
 			return tWidth * tHeight * 6 * bitsPerPixel / 8;
 		}
 		return 0;
@@ -673,7 +687,7 @@ public class ResourceChecker : EditorWindow {
 		GUILayout.EndScrollView();
 	}
 
-	string FormatSizeString(int memSizeKB)
+	string FormatSizeString(float memSizeKB)
 	{
 		if (memSizeKB<1024) return ""+memSizeKB+"k";
 		else
@@ -765,6 +779,18 @@ public class ResourceChecker : EditorWindow {
 					if (!ActiveTextures.Contains (tSpriteTextureDetail)) {
 						ActiveTextures.Add(tSpriteTextureDetail);
 					}
+					for (int i = 0; i < 3; i++) //TODO Get secondaries array length instead
+					{
+						if (tSpriteRenderer.sprite.GetSecondaryTexture(i) == null) continue;
+						var tSpriteSecondaryTextureDetail = GetTextureDetail(tSpriteRenderer.sprite.GetSecondaryTexture(i), renderer);
+						if (!ActiveTextures.Contains(tSpriteSecondaryTextureDetail)) {
+							ActiveTextures.Add(tSpriteSecondaryTextureDetail);
+						}
+					}
+					
+					if (!ActiveTextures.Contains (tSpriteTextureDetail)) {
+						ActiveTextures.Add(tSpriteTextureDetail);
+					}
 				} else if (tSpriteRenderer.sprite == null) {
 					Missing tMissing = new Missing ();
 					tMissing.Object = tSpriteRenderer.transform;
@@ -774,6 +800,31 @@ public class ResourceChecker : EditorWindow {
 					thingsMissing = true;
 				}
 			}
+
+			/*if (renderer is SpriteShapeRenderer)
+			{
+				var s = renderer.gameObject.GetComponent<SpriteShapeController>();
+				if (s == null) continue;
+				if (s.spriteShape.fillTexture != null) {
+					var tShapeFillTextureDetail = GetTextureDetail(s.spriteShape.fillTexture, renderer);
+					if (!ActiveTextures.Contains(tShapeFillTextureDetail)) {
+						ActiveTextures.Add(tShapeFillTextureDetail);
+					}
+				}
+
+				var angles = s.spriteShape.angleRanges;
+				foreach (var angle in angles) {
+					for (int i = 0; i < angle.sprites.Count; i++)
+					{
+						if (angle.sprites[i] == null) continue;
+						var tShapeAngleTextureDetail = GetTextureDetail(angle.sprites[i].texture, renderer);
+						if (!ActiveTextures.Contains(tShapeAngleTextureDetail))
+						{
+							ActiveTextures.Add(tShapeAngleTextureDetail);
+						}
+					}
+				}
+			}*/
 		}
 
 		if (IncludeLightmapTextures) {
@@ -1188,7 +1239,7 @@ public class ResourceChecker : EditorWindow {
 		foreach (MeshDetails tMeshDetails in ActiveMeshDetails) TotalMeshVertices += tMeshDetails.mesh.vertexCount;
 
 		// Sort by size, descending
-		ActiveTextures.Sort(delegate(TextureDetails details1, TextureDetails details2) { return details2.memSizeKB - details1.memSizeKB; });
+		ActiveTextures.Sort(delegate(TextureDetails details1, TextureDetails details2) { return (int)(details2.memSizeKB - details1.memSizeKB); });
 	    ActiveTextures = ActiveTextures.Distinct().ToList();
 		ActiveMeshDetails.Sort(delegate(MeshDetails details1, MeshDetails details2) { return details2.mesh.vertexCount - details1.mesh.vertexCount; });
 
@@ -1347,7 +1398,7 @@ public class ResourceChecker : EditorWindow {
 			tTextureDetails.texture = tTexture;
 			tTextureDetails.isCubeMap = tTexture is Cubemap;
 
-			int memSize = CalculateTextureSizeBytes(tTexture);
+			float memSize = CalculateTextureSizeBytes(tTexture);
 
 			TextureFormat tFormat = TextureFormat.RGBA32;
 			int tMipMapCount = 1;
