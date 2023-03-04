@@ -12,7 +12,6 @@ using UnityEngine.UI;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Reflection;
-using Game.internal_bridge;
 // using UnityEngine.U2D;
 using Application = UnityEngine.Application;
 using Object = UnityEngine.Object;
@@ -1425,5 +1424,18 @@ public class ResourceChecker : EditorWindow {
 
 		return tTextureDetails;
 	}
-
 }
+#if UNITY_2021
+public static class SpriteUtils
+{
+	private delegate Texture2D GetSecondaryTextureDelegate(Sprite sprite, int index);
+
+	private static readonly GetSecondaryTextureDelegate GetSecondaryTextureCached =
+		(GetSecondaryTextureDelegate)Delegate.CreateDelegate(
+			typeof(GetSecondaryTextureDelegate),
+			typeof(Sprite).GetMethod("GetSecondaryTexture", BindingFlags.NonPublic | BindingFlags.Instance) ??
+			throw new Exception("Unity has changed/removed the internal method Sprite.GetSecondaryTexture"));
+
+	public static Texture GetSecondaryTexture(this Sprite sprite, int index) => GetSecondaryTextureCached(sprite, index);
+}
+#endif
