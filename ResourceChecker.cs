@@ -1425,7 +1425,7 @@ public class ResourceChecker : EditorWindow {
 		return tTextureDetails;
 	}
 }
-#if UNITY_2021
+#if UNITY_2021 || UNITY_2020
 public static class SpriteUtils
 {
 	private delegate Texture2D GetSecondaryTextureDelegate(Sprite sprite, int index);
