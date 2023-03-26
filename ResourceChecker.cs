@@ -780,8 +780,8 @@ public class ResourceChecker : EditorWindow {
 					}
 					for (int i = 0; i < 3; i++) //TODO Get secondaries array length instead
 					{
-						if (tSpriteRenderer.sprite.GetSecondaryTexture(i) == null) continue;
-						var tSpriteSecondaryTextureDetail = GetTextureDetail(tSpriteRenderer.sprite.GetSecondaryTexture(i), renderer);
+						if (tSpriteRenderer.sprite.getSecondaryTexture(i) == null) continue;
+						var tSpriteSecondaryTextureDetail = GetTextureDetail(tSpriteRenderer.sprite.getSecondaryTexture(i), renderer);
 						if (!ActiveTextures.Contains(tSpriteSecondaryTextureDetail)) {
 							ActiveTextures.Add(tSpriteSecondaryTextureDetail);
 						}
@@ -1426,6 +1426,7 @@ public class ResourceChecker : EditorWindow {
 	}
 }
 #if UNITY_2021 || UNITY_2020
+// Taken there https://forum.unity.com/threads/grab-secondary-textures-from-sprite-variable.951380/#post-7337899
 public static class SpriteUtils
 {
 	private delegate Texture2D GetSecondaryTextureDelegate(Sprite sprite, int index);
@@ -1436,6 +1437,6 @@ public static class SpriteUtils
 			typeof(Sprite).GetMethod("GetSecondaryTexture", BindingFlags.NonPublic | BindingFlags.Instance) ??
 			throw new Exception("Unity has changed/removed the internal method Sprite.GetSecondaryTexture"));
 
-	public static Texture GetSecondaryTexture(this Sprite sprite, int index) => GetSecondaryTextureCached(sprite, index);
+	public static Texture getSecondaryTexture(this Sprite sprite, int index) => GetSecondaryTextureCached(sprite, index);
 }
 #endif
