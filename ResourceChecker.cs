@@ -778,6 +778,7 @@ public class ResourceChecker : EditorWindow {
 					if (!ActiveTextures.Contains (tSpriteTextureDetail)) {
 						ActiveTextures.Add(tSpriteTextureDetail);
 					}
+#if UNITY_2021 || UNITY_2020
 					for (int i = 0; i < 3; i++) //TODO Get secondaries array length instead
 					{
 						if (tSpriteRenderer.sprite.getSecondaryTexture(i) == null) continue;
@@ -786,7 +787,17 @@ public class ResourceChecker : EditorWindow {
 							ActiveTextures.Add(tSpriteSecondaryTextureDetail);
 						}
 					}
-					
+#else
+					var secondarySpriteTextureResult = new SecondarySpriteTexture[tSpriteRenderer.sprite.GetSecondaryTextureCount()];
+					foreach (var sst in secondarySpriteTextureResult)
+					{
+						var tSpriteSecondaryTextureDetail = GetTextureDetail(sst.texture, renderer);
+						if (!ActiveTextures.Contains(tSpriteSecondaryTextureDetail))
+						{
+							ActiveTextures.Add(tSpriteSecondaryTextureDetail);
+						}
+					}
+#endif
 					if (!ActiveTextures.Contains (tSpriteTextureDetail)) {
 						ActiveTextures.Add(tSpriteTextureDetail);
 					}
@@ -1072,11 +1083,11 @@ public class ResourceChecker : EditorWindow {
 			Animator[] animators = FindObjects<Animator>();
 			foreach (Animator anim in animators)
 			{
-				#if UNITY_4_6 || UNITY_4_5 || UNITY_4_4 || UNITY_4_3
+#if UNITY_4_6 || UNITY_4_5 || UNITY_4_4 || UNITY_4_3
 				UnityEditorInternal.AnimatorController ac = anim.runtimeAnimatorController as UnityEditorInternal.AnimatorController;
-				#elif UNITY_5 || UNITY_5_3_OR_NEWER
+#elif UNITY_5 || UNITY_5_3_OR_NEWER
 				UnityEditor.Animations.AnimatorController ac = anim.runtimeAnimatorController as UnityEditor.Animations.AnimatorController;
-				#endif
+#endif
 
 				//Skip animators without layers, this can happen if they don't have an animator controller.
 				if (!ac || ac.layers == null || ac.layers.Length == 0)
