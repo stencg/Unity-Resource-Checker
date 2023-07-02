@@ -12,7 +12,7 @@ using UnityEngine.UI;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Reflection;
-// using UnityEngine.U2D;
+//using UnityEngine.U2D;
 using Application = UnityEngine.Application;
 using Object = UnityEngine.Object;
 
@@ -789,6 +789,7 @@ public class ResourceChecker : EditorWindow {
 					}
 #else
 					var secondarySpriteTextureResult = new SecondarySpriteTexture[tSpriteRenderer.sprite.GetSecondaryTextureCount()];
+					tSpriteRenderer.sprite.GetSecondaryTextures(secondarySpriteTextureResult);
 					foreach (var sst in secondarySpriteTextureResult)
 					{
 						var tSpriteSecondaryTextureDetail = GetTextureDetail(sst.texture, renderer);
