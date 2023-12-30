@@ -958,7 +958,7 @@ public class ResourceChecker : EditorWindow {
 					tMeshDetails.StaticBatchingEnabled.Add(tMeshFilter.gameObject);
 				}
 				
-			} else if (tMesh == null && tMeshFilter.transform.GetComponent("TextContainer")== null) {
+			} else if (tMesh == null && tMeshFilter.transform.GetComponent("TMPro.TextContainer")== null) {
 				Missing tMissing = new Missing ();
 				tMissing.Object = tMeshFilter.transform;
 				tMissing.type = "mesh";
