@@ -149,7 +149,7 @@ public class ResourceChecker : EditorWindow {
 
 	bool collectedInPlayingMode;
 
-	System.Text.StringBuilder tmpStringBuilder = new System.Text.StringBuilder();
+	System.Text.StringBuilder tmpStringBuilder = new();
 
 	[MenuItem ("Window/Resource Checker")]
 	static void Init ()
@@ -280,83 +280,91 @@ public class ResourceChecker : EditorWindow {
 		foreach (MeshDetails tMeshDetails in ActiveMeshDetails) TotalMeshVertices += tMeshDetails.mesh.vertexCount;
 	}
 
-	float GetBitsPerPixel(TextureFormat format)
+    float GetBitsPerPixel(TextureFormat format)
 	{
-		switch (format)
+		#pragma warning disable CS0618 // Type PVRTC is obsolete
+        switch (format)
 		{
-		case TextureFormat.Alpha8: //	 Alpha-only texture format.
-			return 8;
-		case TextureFormat.ARGB4444: //	 A 16 bits/pixel texture format. Texture stores color with an alpha channel.
-			return 16;
-		case TextureFormat.RGBA4444: //	 A 16 bits/pixel texture format.
-			return 16;
-		case TextureFormat.RGB24:	// A color texture format.
-			return 24;
-		case TextureFormat.RGBA32:	// Color with an alpha channel texture format.
-			return 32;
-		case TextureFormat.ARGB32:	// Color with an alpha channel texture format.
-			return 32;
-		case TextureFormat.RGB565:	//	 A 16 bit color texture format.
-			return 16;
-		case TextureFormat.DXT1:	// Compressed color texture format.
-			return 4;
-		case TextureFormat.DXT1Crunched:    // Crunched formats uses VRAM as uncrunched ones.
-			return 4;
-		case TextureFormat.DXT5:	// Compressed color with alpha channel texture format.
-			return 8;
-		case TextureFormat.DXT5Crunched: // Crunched formats uses VRAM as uncrunched ones.
-			return 8;
-		case TextureFormat.BC4:    // Compressed R channel texture format. 
-			return 4;
-		case TextureFormat.BC7:    // Compressed color with alpha channel texture format.
-			return 8;
-			/*
-			case TextureFormat.WiiI4:	// Wii texture format.
-			case TextureFormat.WiiI8:	// Wii texture format. Intensity 8 bit.
-			case TextureFormat.WiiIA4:	// Wii texture format. Intensity + Alpha 8 bit (4 + 4).
-			case TextureFormat.WiiIA8:	// Wii texture format. Intensity + Alpha 16 bit (8 + 8).
-			case TextureFormat.WiiRGB565:	// Wii texture format. RGB 16 bit (565).
-			case TextureFormat.WiiRGB5A3:	// Wii texture format. RGBA 16 bit (4443).
-			case TextureFormat.WiiRGBA8:	// Wii texture format. RGBA 32 bit (8888).
-			case TextureFormat.WiiCMPR:	//	 Compressed Wii texture format. 4 bits/texel, ~RGB8A1 (Outline alpha is not currently supported).
-				return 0;  //Not supported yet
-			*/
-		case TextureFormat.PVRTC_RGB2://	 PowerVR (iOS) 2 bits/pixel compressed color texture format.
-			return 2;
-		case TextureFormat.PVRTC_RGBA2://	 PowerVR (iOS) 2 bits/pixel compressed with alpha channel texture format
-			return 2;
-		case TextureFormat.PVRTC_RGB4://	 PowerVR (iOS) 4 bits/pixel compressed color texture format.
-			return 4;
-		case TextureFormat.PVRTC_RGBA4://	 PowerVR (iOS) 4 bits/pixel compressed with alpha channel texture format
-			return 4;
-		case TextureFormat.ETC_RGB4:
-			return 4;
-		case TextureFormat.ETC_RGB4Crunched: // Crunched formats uses VRAM as uncrunched ones.
-			return 4;
-		case TextureFormat.ETC2_RGBA8:
-			return 8;
-		case TextureFormat.ETC2_RGB:
-			return 4;
-		case TextureFormat.ETC2_RGBA8Crunched: // Crunched format uses VRAM as uncrunched one.
-			return 4;
-		case TextureFormat.EAC_R:
-			return 4;
-		case TextureFormat.BGRA32://	 Format returned by iPhone camera
-			return 32;		
-		case TextureFormat.ASTC_4x4:
-			return 8;
-		case TextureFormat.ASTC_5x5:
-			return 5.12f;	
-		case TextureFormat.ASTC_6x6:
-			return 3.56f;	
-		case TextureFormat.ASTC_8x8:
-			return 2;	
-		case TextureFormat.ASTC_10x10:
-			return 1.28f;	
-		case TextureFormat.ASTC_12x12:
-			return 0.89f;	
+			case TextureFormat.Alpha8: //	 Alpha-only texture format.
+				return 8;
+			case TextureFormat.ARGB4444: //	 A 16 bits/pixel texture format. Texture stores color with an alpha channel.
+				return 16;
+			case TextureFormat.RGBA4444: //	 A 16 bits/pixel texture format. Texture stores color with an alpha channel.
+				return 16;
+			case TextureFormat.RGB24:	// A color texture format.
+				return 24;
+			case TextureFormat.RGBA32:	// Color with an alpha channel texture format.
+				return 32;
+			case TextureFormat.ARGB32:	// Color with an alpha channel texture format.
+				return 32;
+			case TextureFormat.RGB9e5Float:	// Floating-point color texture format.
+				return 32;
+			case TextureFormat.RGB565:	//	 A 16 bit color texture format.
+				return 16;
+			case TextureFormat.DXT1:	// Compressed color texture format.
+				return 4;
+			case TextureFormat.DXT1Crunched:    // Crunched formats uses VRAM as uncrunched ones.
+				return 4;
+			case TextureFormat.DXT5:	// Compressed color with alpha channel texture format.
+				return 8;
+			case TextureFormat.DXT5Crunched: // Crunched formats uses VRAM as uncrunched ones.
+				return 8;
+			case TextureFormat.BC4:    // Compressed R channel texture format. 
+				return 4;
+			case TextureFormat.BC5:    // Compressed color with alpha channel texture format.
+				return 8;
+			case TextureFormat.BC6H:    // Compressed HDR color texture format.
+				return 8;
+			case TextureFormat.BC7:    // Compressed color with alpha channel texture format.
+				return 8;
+				/*
+				case TextureFormat.WiiI4:	// Wii texture format.
+				case TextureFormat.WiiI8:	// Wii texture format. Intensity 8 bit.
+				case TextureFormat.WiiIA4:	// Wii texture format. Intensity + Alpha 8 bit (4 + 4).
+				case TextureFormat.WiiIA8:	// Wii texture format. Intensity + Alpha 16 bit (8 + 8).
+				case TextureFormat.WiiRGB565:	// Wii texture format. RGB 16 bit (565).
+				case TextureFormat.WiiRGB5A3:	// Wii texture format. RGBA 16 bit (4443).
+				case TextureFormat.WiiRGBA8:	// Wii texture format. RGBA 32 bit (8888).
+				case TextureFormat.WiiCMPR:	//	 Compressed Wii texture format. 4 bits/texel, ~RGB8A1 (Outline alpha is not currently supported).
+					return 0;  //Not supported yet
+				*/
+			case TextureFormat.PVRTC_RGB2://	 PowerVR (iOS) 2 bits/pixel compressed color texture format.
+				return 2;
+			case TextureFormat.PVRTC_RGBA2://	 PowerVR (iOS) 2 bits/pixel compressed with alpha channel texture format
+				return 2;
+			case TextureFormat.PVRTC_RGB4://	 PowerVR (iOS) 4 bits/pixel compressed color texture format.
+				return 4;
+			case TextureFormat.PVRTC_RGBA4://	 PowerVR (iOS) 4 bits/pixel compressed with alpha channel texture format
+				return 4;
+			case TextureFormat.ETC_RGB4:
+				return 4;
+			case TextureFormat.ETC_RGB4Crunched: // Crunched formats uses VRAM as uncrunched ones.
+				return 4;
+			case TextureFormat.ETC2_RGBA8:
+				return 8;
+			case TextureFormat.ETC2_RGB:
+				return 4;
+			case TextureFormat.ETC2_RGBA8Crunched: // Crunched format uses VRAM as uncrunched one.
+				return 4;
+			case TextureFormat.EAC_R:
+				return 4;
+			case TextureFormat.BGRA32://	 Format returned by iPhone camera
+				return 32;		
+			case TextureFormat.ASTC_4x4:
+				return 8;
+			case TextureFormat.ASTC_5x5:
+				return 5.12f;	
+			case TextureFormat.ASTC_6x6:
+				return 3.56f;	
+			case TextureFormat.ASTC_8x8:
+				return 2;	
+			case TextureFormat.ASTC_10x10:
+				return 1.28f;	
+			case TextureFormat.ASTC_12x12:
+				return 0.89f;	
 		}
-		return 0;
+		#pragma warning restore CS0618 // Type PVRTC is obsolete
+        return 0;
 	}
 
 	float CalculateTextureSizeBytes(Texture tTexture)
@@ -1214,11 +1222,14 @@ public class ResourceChecker : EditorWindow {
 				}
 			}
 		}
+#if UNITY_6000_0_OR_NEWER
+		var AudioSources = (AudioSource[])FindObjectsByType(typeof(AudioSource), FindObjectsSortMode.None);
+#else
+		var AudioSources = (AudioSource[])FindObjectsOfType(typeof(AudioSource));
+#endif
 
-		AudioSource[] AudioSources;
-		AudioSources = (AudioSource[])FindObjectsOfType(typeof(AudioSource));
-
-		foreach (AudioSource tAudioSource in AudioSources) {
+		foreach (AudioSource tAudioSource in AudioSources)
+		{
 			AudioClip tClip = tAudioSource.clip;
 			if (tClip != null)
 			{
@@ -1325,20 +1336,27 @@ public class ResourceChecker : EditorWindow {
 
 	private T[] FindObjects<T>() where T : Object
 	{
-		if (IncludeDisabledObjects) {
-			List<T> meshfilters = new List<T> ();
+		if (IncludeDisabledObjects)
+		{
+			List<T> meshfilters = new List<T>();
 			GameObject[] allGo = GetAllRootGameObjects();
-			foreach (GameObject go in allGo) {
-				Transform[] tgo = go.GetComponentsInChildren<Transform> (true).ToArray ();
-				foreach (Transform tr in tgo) {
-					if (tr.GetComponent<T> ())
-						meshfilters.Add (tr.GetComponent<T> ());
+			foreach (GameObject go in allGo)
+			{
+				Transform[] tgo = go.GetComponentsInChildren<Transform>(true).ToArray();
+				foreach (Transform tr in tgo)
+				{
+					if (tr.GetComponent<T>())
+						meshfilters.Add(tr.GetComponent<T>());
 				}
 			}
-			return (T[])meshfilters.ToArray ();
+			return (T[])meshfilters.ToArray();
 		}
 		else
+#if UNITY_6000_0_OR_NEWER
+			return (T[])FindObjectsByType(typeof(T), FindObjectsSortMode.None);
+#else
 			return (T[])FindObjectsOfType(typeof(T));
+#endif
 	}
 
 	private TextureDetails GetTextureDetail(Texture tTexture, Material tMaterial, MaterialDetails tMaterialDetails)
