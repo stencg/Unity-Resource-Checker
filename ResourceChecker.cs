@@ -169,8 +169,9 @@ public class ResourceChecker : EditorWindow {
 		GUI.color = new Color (1.0f, 0.95f, 0.8f, 1.0f);
 		IncludeGuiElements = GUILayout.Toggle(IncludeGuiElements, "Look in GUI elements (Textures, mats)", GUILayout.Width(300));
 		IncludeLightmapTextures = GUILayout.Toggle(IncludeLightmapTextures, "Look in Lightmap textures", GUILayout.Width(300));
-		GUI.color = defColor;
 		IncludeSelectedFolder = GUILayout.Toggle(IncludeSelectedFolder, "Look in Selected Folders (Textures, Audio)", GUILayout.Width(300));
+		GUI.color = defColor;
+		
 		GUILayout.BeginArea(new Rect(position.width-85,5,100,85));
 		if (GUILayout.Button("Calculate",GUILayout.Width(80), GUILayout.Height(40)))
 			CheckResources();
@@ -186,11 +187,11 @@ public class ResourceChecker : EditorWindow {
 
 		GUILayout.Space(120);
 		if (thingsMissing == true) {
-			EditorGUI.HelpBox (new Rect(8,105,300,25),"Some GameObjects are missing elements.", MessageType.Error);
+			EditorGUI.HelpBox (new Rect(8,135,300,25),"Some GameObjects are missing elements.", MessageType.Error);
 		}
-		EditorGUI.HelpBox(new Rect(8, 135, 300, 25), "It always checks GOs in opened scenes.", MessageType.Info);
-		EditorGUI.HelpBox(new Rect(8, 160, 300, 25), "Crunched formats use VRAM as uncrunched ones.", MessageType.Warning);
-		// EditorGUI.HelpBox(new Rect(8, 185, 300, 25), "ASTC is not yet supported ", MessageType.Warning);
+		EditorGUI.HelpBox(new Rect(8, 165, 300, 25), "It always checks GOs in opened scenes.", MessageType.Info);
+		EditorGUI.HelpBox(new Rect(8, 195, 300, 25), "Crunched formats use VRAM as uncrunched ones.", MessageType.Warning);
+
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Textures "+ActiveTextures.Count+" - "+FormatSizeString(TotalTextureMemory));
 		GUILayout.Label("Materials "+ActiveMaterials.Count);
@@ -362,6 +363,18 @@ public class ResourceChecker : EditorWindow {
 				return 1.28f;	
 			case TextureFormat.ASTC_12x12:
 				return 0.89f;	
+			case TextureFormat.ASTC_HDR_4x4:
+				return 8;
+			case TextureFormat.ASTC_HDR_5x5:
+				return 5.12f;
+			case TextureFormat.ASTC_HDR_6x6:
+				return 3.56f;
+			case TextureFormat.ASTC_HDR_8x8:
+				return 2;
+			case TextureFormat.ASTC_HDR_10x10:
+				return 1.28f;
+			case TextureFormat.ASTC_HDR_12x12:
+				return 0.89f;
 		}
 		#pragma warning restore CS0618 // Type PVRTC is obsolete
         return 0;
@@ -388,26 +401,39 @@ public class ResourceChecker : EditorWindow {
 			}
 			return tSize;
 		}
+		//TODO: Calculate size precisely
 		if (tTexture is Texture2DArray)
 		{
-			Texture2DArray tTex2D=tTexture as Texture2DArray;
-			float bitsPerPixel=GetBitsPerPixel(tTex2D.format);
-			int mipMapCount=10;
-			int mipLevel=1;
-			float tSize=0;
-			while (mipLevel<=mipMapCount)
+			Texture2DArray tTex2D = tTexture as Texture2DArray;
+			float bitsPerPixel = GetBitsPerPixel(tTex2D.format);
+			int mipMapCount = 10;
+			int mipLevel = 0;
+			float tSize = 0;
+			while (mipLevel <= mipMapCount)
 			{
-				tSize+=tWidth*tHeight*bitsPerPixel/8;
-				tWidth=tWidth/2;
-				tHeight=tHeight/2;
+				tSize += tWidth * tHeight * bitsPerPixel / 8;
+				tWidth = tWidth / 2;
+				tHeight = tHeight / 2;
 				mipLevel++;
 			}
-			return tSize*((Texture2DArray)tTex2D).depth;
+			return tSize * ((Texture2DArray)tTex2D).depth;
 		}
-		if (tTexture is Cubemap) {
+		//TODO: Calculate size of cubemap depending on mapping type (Cubic, Cylindrical, Spheremap)
+		if (tTexture is Cubemap)
+		{
 			Cubemap tCubemap = tTexture as Cubemap;
-			float bitsPerPixel = GetBitsPerPixel (tCubemap.format);
-			return tWidth * tHeight * 6 * bitsPerPixel / 8;
+			float bitsPerPixel = GetBitsPerPixel(tCubemap.format);
+			int mipMapCount = tCubemap.mipmapCount;
+			int mipLevel = 0;
+			float tSize = 0;
+			while (mipLevel <= mipMapCount)
+			{
+				tSize += tWidth * tHeight * bitsPerPixel / 8;
+				tWidth = tWidth / 2;
+				tHeight = tHeight / 2;
+				mipLevel++;
+			}
+			return tSize * 6;
 		}
 		return 0;
 	}
@@ -752,6 +778,25 @@ public class ResourceChecker : EditorWindow {
 		MissingObjects.Clear();
 		ActiveClipDetails.Clear();
 		thingsMissing = false;
+
+		ReflectionProbe[] reflectionProbes = FindObjects<ReflectionProbe>();
+
+		foreach (ReflectionProbe reflectionProbe in reflectionProbes)
+		{
+			if (reflectionProbe.bakedTexture != null)
+			{
+				ActiveTextures.Add(GetTextureDetail(reflectionProbe.bakedTexture));
+			}
+			if (reflectionProbe.customBakedTexture != null)
+			{
+				ActiveTextures.Add(GetTextureDetail(reflectionProbe.customBakedTexture));
+			}
+		}
+
+		if (RenderSettings.customReflectionTexture != null)
+		{
+			ActiveTextures.Add(GetTextureDetail(RenderSettings.customReflectionTexture));
+		}
 
 		Renderer[] renderers = FindObjects<Renderer>();
 
@@ -1431,19 +1476,21 @@ public class ResourceChecker : EditorWindow {
 
 			TextureFormat tFormat = TextureFormat.RGBA32;
 			int tMipMapCount = 1;
-			if (tTexture is Texture2D)
+
+			switch (tTexture)
 			{
-				tFormat = (tTexture as Texture2D).format;
-				tMipMapCount = (tTexture as Texture2D).mipmapCount;
-			}
-			if (tTexture is Cubemap)
-			{
-				tFormat = (tTexture as Cubemap).format;
-				memSize = 8 * tTexture.height * tTexture.width;
-			}
-			if(tTexture is Texture2DArray){
-				tFormat = (tTexture as Texture2DArray).format;
-				tMipMapCount = 10;
+				case Texture2D t2d:
+					tFormat = t2d.format;
+					tMipMapCount = t2d.mipmapCount;
+					break;
+				case Texture2DArray t2da:
+					tFormat = t2da.format;
+					tMipMapCount = t2da.mipmapCount;
+					break;
+				case Cubemap cubemap:
+					tFormat = cubemap.format;
+					tMipMapCount = cubemap.mipmapCount;
+					break;
 			}
 
 			tTextureDetails.memSizeKB = memSize / 1024;
